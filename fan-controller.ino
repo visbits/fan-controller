@@ -4,14 +4,18 @@
 Adafruit_EMC2101  emc2101;
 
 // Define Variables we'll be connecting to
-double targetTemp, temp, fanDC;
+double temp, fanDC;
 
 // Specify the PID tuning Parameters
 // P_ON_M specifies that Proportional on Measurement be used
 // P_ON_E (Proportional on Error) is the default behavior
 double consKp=0.3, consKi=0.1, consKd=0.08;
 
+// DC
 int intDC = 0;
+
+// Setup Targets
+double targetTemp = 26;
 
 // Pid Controllers
 PID fan1(&temp, &fanDC, &targetTemp, consKp, consKi, consKd, P_ON_M, DIRECT);
@@ -21,7 +25,7 @@ PID fan4(&temp, &fanDC, &targetTemp, consKp, consKi, consKd, P_ON_M, DIRECT);
 
 // Multiplex selection function
 #define PCAADDR 0x70
-void pcaselect(uint8_t i) {
+void fanSelect(uint8_t i) {
   if (i > 3) return; 
   Wire.beginTransmission(PCAADDR);
   Wire.write(1 << i);
@@ -42,7 +46,6 @@ void printStats(int temp, int targetTemp, int intDC,int rpm){
   Serial.print("% / RPM: ");
   Serial.print(rpm);
   Serial.println(" RPM");
-  Serial.println("");
   Serial.println("");
 }
 
@@ -76,47 +79,42 @@ void setup() {
   Wire.begin();
   delay(500);
 
-  // Select Fan1 Multiplex port
-  pcaselect(0);
+  // -------------------------------
+  // Fan1
+  // -------------------------------
+  fanSelect(0);
 
   // Try to initialize EMC2101
   if (!emc2101.begin()) {
     Serial.println("Failed to find EMC2101 chip");
     while (1) { delay(10); }
+  } else {
+    // Set base config
+    emc2101.enableTachInput(true);
+    emc2101.setPWMDivisor(0);
   }
  
-  // Set base config
-  emc2101.enableTachInput(true);
-  emc2101.setPWMDivisor(0);
-
-  // Setup Targets
-  temp = emc2101.getInternalTemperature();
-  targetTemp = 26;
-
-  // Select Fan2 Multiplex port
-  pcaselect(1);
+  // -------------------------------
+  // Fan2
+  // -------------------------------
+  fanSelect(1);
 
   // Try to initialize EMC2101
   if (!emc2101.begin()) {
     Serial.println("Failed to find EMC2101 chip");
     while (1) { delay(10); }
+  } else {
+     // Set base config
+    emc2101.enableTachInput(true);
+    emc2101.setPWMDivisor(0);
   }
- 
-  // Set base config
-  emc2101.enableTachInput(true);
-  emc2101.setPWMDivisor(0);
-
-  // Setup Targets
-  temp = emc2101.getInternalTemperature();
-  targetTemp = 26;
-
 }
 
 void loop() {
   // -------------------------------
   // Fan1
   // -------------------------------
-  pcaselect(0);
+  fanSelect(0);
 
   // Get current Temp for PID
   temp = emc2101.getInternalTemperature();
@@ -134,7 +132,7 @@ void loop() {
   // -------------------------------
   // Fan2
   // -------------------------------
-  pcaselect(1);
+  fanSelect(1);
 
   // Get current Temp for PID
   temp = emc2101.getInternalTemperature();
