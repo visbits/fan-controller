@@ -71,6 +71,24 @@ void fanSetup(PID& fan, int fanId){
   }
 }
 
+void fanStatus(PID& fan, int fanId){
+  fanSelect(fanId);
+
+  // Get current Temp for PID
+  temp = emc2101.getInternalTemperature();
+
+  // Calculate PID
+  fan.Compute();
+  
+  // Set EMC 2101 DC
+  emc2101.setDutyCycle(fanDC);
+
+  // Debug
+  Serial.print("Fan ");
+  Serial.println(fanId);
+  printStats(temp,targetTemp,emc2101.getDutyCycle(), emc2101.getFanRPM());
+}
+
 void setup() {
 
   // Init serial console
@@ -89,41 +107,11 @@ void setup() {
 }
 
 void loop() {
-  // -------------------------------
-  // Fan1
-  // -------------------------------
-  fanSelect(0);
 
-  // Get current Temp for PID
-  temp = emc2101.getInternalTemperature();
-
-  // Calculate PID
-  fan1.Compute();
-  
-  // Set EMC 2101 DC
-  emc2101.setDutyCycle(fanDC);
-
-  // Debug
-  Serial.println("Fan 1");
-  printStats(temp,targetTemp,emc2101.getDutyCycle(), emc2101.getFanRPM());
-
-  // -------------------------------
-  // Fan2
-  // -------------------------------
-  fanSelect(1);
-
-  // Get current Temp for PID
-  temp = emc2101.getInternalTemperature();
-
-  // Calculate PID
-  fan2.Compute();
-  
-  // Set EMC 2101 DC
-  emc2101.setDutyCycle(fanDC);
-
-  // Debug
-  Serial.println("Fan 2");
-  printStats(temp, targetTemp, emc2101.getDutyCycle(), emc2101.getFanRPM());
+  fanStatus(fan1, 0);
+  fanStatus(fan2, 1);
+  //fanStatus(fan3, 2);
+  //fanStatus(fan4, 3);
 
   delay(200);
 }
