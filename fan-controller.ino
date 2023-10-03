@@ -24,6 +24,7 @@ PID fan3(&temp, &fanDC, &targetTemp, consKp, consKi, consKd, P_ON_M, DIRECT);
 PID fan4(&temp, &fanDC, &targetTemp, consKp, consKi, consKd, P_ON_M, DIRECT);
 
 // Multiplex selection function
+// Writes integer to 0x70 prior to sending following commands.
 #define PCAADDR 0x70
 void fanSelect(uint8_t i) {
   if (i > 3) return; 
@@ -49,40 +50,15 @@ void printStats(int temp, int targetTemp, int intDC,int rpm){
   Serial.println("");
 }
 
-void setup() {
-
-  // Init serial console
-  Serial.begin(115200);
-  while (!Serial) delay(10);     // will pause Zero, Leonardo, etc until serial console opens
-
-  // PID Controller Config fans 1-4
-  fan1.SetOutputLimits(1,100);
-  fan1.SetMode(AUTOMATIC);
-  fan1.SetControllerDirection(REVERSE);
-  fan1.SetSampleTime(200);
-
-  fan2.SetOutputLimits(1,100);
-  fan2.SetMode(AUTOMATIC);
-  fan2.SetControllerDirection(REVERSE);
-  fan2.SetSampleTime(200);
-
-  fan3.SetOutputLimits(1,100);
-  fan3.SetMode(AUTOMATIC);
-  fan3.SetControllerDirection(REVERSE);
-  fan3.SetSampleTime(200);
-
-  fan4.SetOutputLimits(1,100);
-  fan4.SetMode(AUTOMATIC);
-  fan4.SetControllerDirection(REVERSE);
-  fan4.SetSampleTime(200);
-
-  Wire.begin();
-  delay(500);
-
-  // -------------------------------
-  // Fan1
-  // -------------------------------
-  fanSelect(0);
+void fanSetup(PID& fan, int fanId){
+  // Configure PID controller
+  fan.SetOutputLimits(1,100);
+  fan.SetMode(AUTOMATIC);
+  fan.SetControllerDirection(REVERSE);
+  fan.SetSampleTime(200);
+  
+  // Select Multiplex Fan ID
+  fanSelect(fanId);
 
   // Try to initialize EMC2101
   if (!emc2101.begin()) {
@@ -93,21 +69,23 @@ void setup() {
     emc2101.enableTachInput(true);
     emc2101.setPWMDivisor(0);
   }
- 
-  // -------------------------------
-  // Fan2
-  // -------------------------------
-  fanSelect(1);
+}
 
-  // Try to initialize EMC2101
-  if (!emc2101.begin()) {
-    Serial.println("Failed to find EMC2101 chip");
-    while (1) { delay(10); }
-  } else {
-     // Set base config
-    emc2101.enableTachInput(true);
-    emc2101.setPWMDivisor(0);
-  }
+void setup() {
+
+  // Init serial console
+  Serial.begin(115200);
+  while (!Serial) delay(10);     // will pause Zero, Leonardo, etc until serial console opens
+
+  // Init serial and delay for init
+  Wire.begin();
+  delay(500);
+
+  // PID Controller Config fans 1-4
+  fanSetup(fan1,0);
+  fanSetup(fan2,1);
+  //fanSetup(fan3,2);
+  //fanSetup(fan4,3);
 }
 
 void loop() {
@@ -127,7 +105,7 @@ void loop() {
 
   // Debug
   Serial.println("Fan 1");
-  printStats(temp,targetTemp,fanDC,emc2101.getFanRPM());
+  printStats(temp,targetTemp,emc2101.getDutyCycle(), emc2101.getFanRPM());
 
   // -------------------------------
   // Fan2
@@ -145,7 +123,7 @@ void loop() {
 
   // Debug
   Serial.println("Fan 2");
-  printStats(temp,targetTemp,fanDC,emc2101.getFanRPM());
+  printStats(temp, targetTemp, emc2101.getDutyCycle(), emc2101.getFanRPM());
 
   delay(200);
 }
